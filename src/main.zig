@@ -11,8 +11,6 @@ const ArrayList = std.ArrayList;
 
 const LazyError = error{
     NoNext,
-    NoInit,
-    NoDeInit,
 };
 
 pub fn LazyTake(comptime T: type, comptime ItemT: type) type {
@@ -20,7 +18,7 @@ pub fn LazyTake(comptime T: type, comptime ItemT: type) type {
         source: T,
         current_count: usize = 0,
         count: usize,
-        done: bool,
+        done: bool = false,
         allocator: Allocator,
 
         const Self = @This();
@@ -32,7 +30,7 @@ pub fn LazyTake(comptime T: type, comptime ItemT: type) type {
             if (!@hasField(T, "allocator")) {
                 @compileError("source must have an allocator field");
             }
-            return Self{ .source = source, .current_count = 0, .count = count, .done = false, .allocator = source.allocator };
+            return Self{ .source = source, .current_count = 0, .count = count, .allocator = source.allocator };
         }
 
         pub fn next(self: *Self) !?[]ItemT {
@@ -76,7 +74,7 @@ test "simple lazy take over integers" {
 pub fn LazyFilter(comptime T: type, comptime ItemT: type, comptime filterFn: fn (a: ItemT) bool) type {
     return struct {
         source: T,
-        done: bool,
+        done: bool = false,
 
         allocator: Allocator,
 
@@ -92,7 +90,6 @@ pub fn LazyFilter(comptime T: type, comptime ItemT: type, comptime filterFn: fn 
             return Self{
                 .source = source,
                 .allocator = source.allocator,
-                .done = false,
             };
         }
 
@@ -153,7 +150,7 @@ pub fn LazyDrop(comptime T: type, comptime ItemT: type) type {
     return struct {
         source: T,
         count: usize,
-        done: bool,
+        done: bool = false,
         allocator: Allocator,
 
         const Self = @This();
@@ -165,7 +162,7 @@ pub fn LazyDrop(comptime T: type, comptime ItemT: type) type {
             if (!@hasField(T, "allocator")) {
                 @compileError("source must have a next delaration");
             }
-            return Self{ .source = source, .count = count, .done = false, .allocator = source.allocator };
+            return Self{ .source = source, .count = count, .allocator = source.allocator };
         }
 
         pub fn next(self: *Self) !?[]ItemT {
@@ -215,7 +212,7 @@ test "drop 10 from divisible by 3 integers" {
 pub fn LazyTakeWhile(comptime T: type, comptime ItemT: type, comptime func: fn (a: ItemT) bool) type {
     return struct {
         source: T,
-        done: bool,
+        done: bool = false,
         allocator: Allocator,
 
         const Self = @This();
@@ -226,7 +223,7 @@ pub fn LazyTakeWhile(comptime T: type, comptime ItemT: type, comptime func: fn (
             if (!@hasField(T, "allocator")) {
                 @compileError("source must have a next delaration");
             }
-            return Self{ .source = source, .allocator = source.allocator, .done = false };
+            return Self{ .source = source, .allocator = source.allocator };
         }
 
         pub fn next(self: *Self) !?[]ItemT {
@@ -277,7 +274,7 @@ pub fn LazyDropWhile(comptime T: type, comptime ItemT: type, comptime func: fn (
     return struct {
         source: T,
         allocator: Allocator,
-        done: bool,
+        done: bool = false,
         unlocked: bool,
 
         const Self = @This();
@@ -289,7 +286,7 @@ pub fn LazyDropWhile(comptime T: type, comptime ItemT: type, comptime func: fn (
             if (!@hasField(T, "allocator")) {
                 @compileError("source must have a next delaration");
             }
-            return Self{ .source = source, .allocator = source.allocator, .done = false, .unlocked = false };
+            return Self{ .source = source, .allocator = source.allocator, .unlocked = false };
         }
 
         pub fn next(self: *Self) !?[]ItemT {
@@ -358,7 +355,7 @@ pub fn LazyMap(comptime T: type, comptime ItemT: type, comptime FinalItemT: type
             if (!@hasField(T, "allocator")) {
                 @compileError("source must have a next delaration");
             }
-            return Self{ .source = source, .allocator = source.allocator, .done = false };
+            return Self{ .source = source, .allocator = source.allocator };
         }
 
         pub fn next(self: *Self) !?[]FinalItemT {
