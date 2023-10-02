@@ -93,16 +93,14 @@ pub fn ReaderIterator(comptime ReaderT: type, comptime ItemT: type) type {
         pub fn next(self: *Self) !?[]ItemT {
             if (self.done) return null;
 
-            var buffer = try self.allocator.alloc(ItemT, 1024);
-            const byteCount: usize = try self.reader.read(buffer);
+            var buffer: [128]ItemT = undefined;
+            const byteCount: usize = try self.reader.read(&buffer);
             if (byteCount == 0) {
-                defer self.allocator.free(buffer);
                 self.done = true;
                 return null;
             }
 
-            //std.debug.print("\nFILE NOT ENDED {any}\n", .{buffer});
-            return buffer;
+            return try self.allocator.dupe(ItemT, buffer[0..byteCount]);
         }
     };
 }
