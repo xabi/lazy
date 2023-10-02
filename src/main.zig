@@ -13,9 +13,9 @@ const LazyError = error{
     NoNext,
 };
 
-pub fn LazyTake(comptime T: type, comptime ItemT: type) type {
+pub fn LazyTake(comptime SourceT: type, comptime ItemT: type) type {
     return struct {
-        source: T,
+        source: SourceT,
         current_count: usize = 0,
         count: usize,
         done: bool = false,
@@ -23,11 +23,11 @@ pub fn LazyTake(comptime T: type, comptime ItemT: type) type {
 
         const Self = @This();
 
-        pub fn init(source: T, count: usize) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT, count: usize) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have an allocator field");
             }
             return Self{ .source = source, .current_count = 0, .count = count, .allocator = source.allocator };
@@ -71,20 +71,20 @@ test "simple lazy take over integers" {
     try testing.expect(allItems.items.len == 100);
 }
 
-pub fn LazyFilter(comptime T: type, comptime ItemT: type, comptime filterFn: fn (a: ItemT) bool) type {
+pub fn LazyFilter(comptime SourceT: type, comptime ItemT: type, comptime filterFn: fn (a: ItemT) bool) type {
     return struct {
-        source: T,
+        source: SourceT,
         done: bool = false,
 
         allocator: Allocator,
 
         const Self = @This();
 
-        pub fn init(source: T) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have an allocator field");
             }
             return Self{
@@ -146,20 +146,20 @@ test "filter over integers, take 100" {
     try testing.expectEqualSlices(u64, &[6]u64{ 0, 3, 6, 9, 12, 15 }, allItems2.items);
 }
 
-pub fn LazyDrop(comptime T: type, comptime ItemT: type) type {
+pub fn LazyDrop(comptime SourceT: type, comptime ItemT: type) type {
     return struct {
-        source: T,
+        source: SourceT,
         count: usize,
         done: bool = false,
         allocator: Allocator,
 
         const Self = @This();
 
-        pub fn init(source: T, count: usize) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT, count: usize) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have a next delaration");
             }
             return Self{ .source = source, .count = count, .allocator = source.allocator };
@@ -209,18 +209,18 @@ test "drop 10 from divisible by 3 integers" {
     try testing.expectEqualSlices(u64, &[4]u64{ 12, 15, 18, 21 }, someInts.items);
 }
 
-pub fn LazyTakeWhile(comptime T: type, comptime ItemT: type, comptime func: fn (a: ItemT) bool) type {
+pub fn LazyTakeWhile(comptime SourceT: type, comptime ItemT: type, comptime func: fn (a: ItemT) bool) type {
     return struct {
-        source: T,
+        source: SourceT,
         done: bool = false,
         allocator: Allocator,
 
         const Self = @This();
-        pub fn init(source: T) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have a next delaration");
             }
             return Self{ .source = source, .allocator = source.allocator };
@@ -270,20 +270,20 @@ test "take divisible by 3 integers while they are less than 50" {
     try testing.expectEqualSlices(u64, &[_]u64{ 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48 }, someInts.items);
 }
 
-pub fn LazyDropWhile(comptime T: type, comptime ItemT: type, comptime func: fn (ItemT) bool) type {
+pub fn LazyDropWhile(comptime SourceT: type, comptime ItemT: type, comptime func: fn (ItemT) bool) type {
     return struct {
-        source: T,
+        source: SourceT,
         allocator: Allocator,
         done: bool = false,
         unlocked: bool,
 
         const Self = @This();
 
-        pub fn init(source: T) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have a next delaration");
             }
             return Self{ .source = source, .allocator = source.allocator, .unlocked = false };
@@ -340,19 +340,19 @@ test "take divisible by 3 integers while they are less than 50 and more than 25"
     try testing.expectEqualSlices(u64, &[_]u64{ 27, 30, 33, 36, 39, 42, 45, 48 }, someInts.items);
 }
 
-pub fn LazyMap(comptime T: type, comptime ItemT: type, comptime FinalItemT: type, comptime mapFn: fn (ItemT) FinalItemT) type {
+pub fn LazyMap(comptime SourceT: type, comptime ItemT: type, comptime FinalItemT: type, comptime mapFn: fn (ItemT) FinalItemT) type {
     return struct {
-        source: T,
+        source: SourceT,
         allocator: Allocator,
         done: bool = false,
 
         const Self = @This();
 
-        pub fn init(source: T) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have a next delaration");
             }
             return Self{ .source = source, .allocator = source.allocator };
@@ -397,9 +397,9 @@ test "take divisible by 3 integers while they are less than 50 and more than 25 
     try testing.expectEqualSlices(i64, &[8]i64{ -54, -60, -66, -72, -78, -84, -90, -96 }, someInts.items);
 }
 
-pub fn LazyFlapMap(comptime T: type, comptime ItemT: type, comptime IteratorT: type, comptime FinalItemT: type, comptime mapFn: anytype) type {
+pub fn LazyFlapMap(comptime SourceT: type, comptime ItemT: type, comptime IteratorT: type, comptime FinalItemT: type, comptime mapFn: anytype) type {
     return struct {
-        source: T,
+        source: SourceT,
         allocator: Allocator,
         done: bool = false,
         current_slice: []ItemT = &[_]ItemT{},
@@ -407,11 +407,11 @@ pub fn LazyFlapMap(comptime T: type, comptime ItemT: type, comptime IteratorT: t
 
         const Self = @This();
 
-        pub fn init(source: T) Self {
-            if (!@hasDecl(T, "next")) {
+        pub fn init(source: SourceT) Self {
+            if (!@hasDecl(SourceT, "next")) {
                 @compileError("source must have a next delaration");
             }
-            if (!@hasField(T, "allocator")) {
+            if (!@hasField(SourceT, "allocator")) {
                 @compileError("source must have a next delaration");
             }
             return Self{ .source = source, .allocator = source.allocator };
@@ -474,9 +474,9 @@ test "test flatMap" {
     try testing.expectEqualSlices(u64, &[_]u64{ 0, 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8 }, someInts.items);
 }
 
-pub fn LazyCollateWithSeparator(comptime T: type, comptime ItemT: type) type {
+pub fn LazyCollateWithSeparator(comptime SourceT: type, comptime ItemT: type) type {
     return struct {
-        source: T,
+        source: SourceT,
         buffer: ArrayList(ItemT),
         separator: []const ItemT,
         done: bool = false,
@@ -484,7 +484,7 @@ pub fn LazyCollateWithSeparator(comptime T: type, comptime ItemT: type) type {
 
         const Self = @This();
 
-        pub fn init(source: T, separator: []const ItemT) Self {
+        pub fn init(source: SourceT, separator: []const ItemT) Self {
             const buffer = ArrayList(ItemT).init(source.allocator);
             return Self{ .source = source, .allocator = source.allocator, .separator = separator, .buffer = buffer };
         }
