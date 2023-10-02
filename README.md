@@ -1,3 +1,3 @@
 # lazy
 
-an attempt to learn by creating composable lazy iterators 
+an attempt to learn zig by creating a composable lazy iterators lib
