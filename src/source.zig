@@ -120,7 +120,7 @@ pub fn ReaderIterator(comptime ReaderT: type, comptime ItemT: type) type {
         pub fn next(self: *Self) !?[]ItemT {
             if (self.done) return null;
 
-            var buffer: [128]ItemT = undefined;
+            var buffer: [1024]ItemT = undefined;
             const byteCount: usize = try self.reader.read(&buffer);
             if (byteCount == 0) {
                 self.done = true;

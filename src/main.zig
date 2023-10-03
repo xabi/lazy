@@ -340,7 +340,7 @@ test "take divisible by 3 integers while they are less than 50 and more than 25"
     try testing.expectEqualSlices(u64, &[_]u64{ 27, 30, 33, 36, 39, 42, 45, 48 }, someInts.items);
 }
 
-pub fn LazyMap(comptime SourceT: type, comptime ItemT: type, comptime FinalItemT: type, comptime mapFn: fn (ItemT) FinalItemT) type {
+pub fn LazyMap(comptime SourceT: type, comptime ItemT: type, comptime FinalItemT: type, comptime mapFn: fn (Allocator, ItemT) FinalItemT) type {
     return struct {
         source: SourceT,
         allocator: Allocator,
@@ -370,14 +370,15 @@ pub fn LazyMap(comptime SourceT: type, comptime ItemT: type, comptime FinalItemT
 
             var mapped_slice = try self.allocator.alloc(FinalItemT, slice.?.len);
             for (slice.?, 0..) |item, idx| {
-                mapped_slice[idx] = mapFn(item);
+                mapped_slice[idx] = mapFn(self.allocator, item);
             }
             return mapped_slice;
         }
     };
 }
 
-fn timesMinus2(num: u64) i64 {
+fn timesMinus2(allocator: Allocator, num: u64) i64 {
+    _ = allocator;
     return @as(i64, @intCast(num)) * -2;
 }
 
@@ -395,6 +396,33 @@ test "take divisible by 3 integers while they are less than 50 and more than 25 
     const someInts = try doAll(&map, i64);
     defer someInts.deinit();
     try testing.expectEqualSlices(i64, &[8]i64{ -54, -60, -66, -72, -78, -84, -90, -96 }, someInts.items);
+}
+
+fn length(allocator: Allocator, slice: []const u8) usize {
+    defer allocator.free(slice);
+
+    return slice.len;
+}
+
+test "other test for map" {
+    const allocator = std.testing.allocator;
+    const Reader = std.io.Reader;
+    const File = std.fs.File;
+    const ReadError = std.os.ReadError;
+    const ReaderIterator = sourcezig.ReaderIterator;
+    const FileReader = Reader(File, ReadError, File.read);
+    const file = try std.fs.cwd().openFile("src/source.zig", .{});
+    defer file.close();
+    const reader: FileReader = file.reader();
+
+    var readerIterator = ReaderIterator(FileReader, u8).init(reader, allocator);
+    const LazyCollate = LazyCollateWithSeparator(ReaderIterator(FileReader, u8), u8);
+    const separator: []const u8 = "\n";
+    var collate = LazyCollate.init(readerIterator, separator);
+    var map = LazyMap(LazyCollate, []const u8, usize, length).init(collate);
+    const someInts = try doAll(&map, usize);
+    defer someInts.deinit();
+    try testing.expectEqualSlices(usize, &[_]usize{ 27, 0, 36, 28, 29 }, someInts.items[0..5]);
 }
 
 pub fn LazyFlapMap(comptime SourceT: type, comptime ItemT: type, comptime IteratorT: type, comptime FinalItemT: type, comptime mapFn: anytype) type {
@@ -618,7 +646,6 @@ test "lazy join" {
     var join = Join.init(collate);
     const someInts = try doAll(&join, u8);
     defer someInts.deinit();
-    std.debug.print("joined collate {s}\n", .{someInts.items});
 }
 
 pub fn doAll(iterator: anytype, comptime ItemT: type) !std.ArrayList(ItemT) {
