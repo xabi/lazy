@@ -78,6 +78,33 @@ test "Constant" {
     try testing.expectEqualSlices(u64, &[_]u64{ 1, 1, 1, 1, 1, 1, 1, 1 }, slice.?);
 }
 
+pub fn Repeat(comptime ItemT: type, comptime slice: []const ItemT) type {
+    return struct {
+        allocator: Allocator,
+
+        const Self = @This();
+        pub fn init(allocator: Allocator) Self {
+            return Self{ .allocator = allocator };
+        }
+
+        pub fn next(self: *Self) !?[]ItemT {
+            return try self.allocator.dupe(ItemT, slice);
+        }
+    };
+}
+
+test "repeat test" {
+    const allocator = std.testing.allocator;
+    const RepeatS = Repeat(u64, &[_]u64{ 1, 2, 3, 4 });
+    var repeat = RepeatS.init(allocator);
+    var slice = try repeat.next();
+    defer allocator.free(slice.?);
+    try testing.expectEqualSlices(u64, &[_]u64{ 1, 2, 3, 4 }, slice.?);
+    var slice2 = try repeat.next();
+    defer allocator.free(slice2.?);
+    try testing.expectEqualSlices(u64, &[_]u64{ 1, 2, 3, 4 }, slice2.?);
+}
+
 pub fn ReaderIterator(comptime ReaderT: type, comptime ItemT: type) type {
     return struct {
         reader: ReaderT,
